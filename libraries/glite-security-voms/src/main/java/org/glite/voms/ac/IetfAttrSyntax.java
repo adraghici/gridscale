@@ -10,12 +10,12 @@ import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Vector;
+import org.bouncycastle.asn1.ASN1Encodable;
+import org.bouncycastle.asn1.ASN1Primitive;
 
 import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.ASN1TaggedObject;
-import org.bouncycastle.asn1.DEREncodable;
 import org.bouncycastle.asn1.DEREncodableVector;
-import org.bouncycastle.asn1.DERObject;
 import org.bouncycastle.asn1.DERObjectIdentifier;
 import org.bouncycastle.asn1.DEROctetString;
 import org.bouncycastle.asn1.DERSequence;
@@ -41,7 +41,7 @@ import org.bouncycastle.asn1.x509.GeneralNames;
  *
  * @author mulmo
  */
-public class IetfAttrSyntax implements DEREncodable {
+public class IetfAttrSyntax implements ASN1Encodable {
     public static final int VALUE_OCTETS = 1;
     public static final int VALUE_OID = 2;
     public static final int VALUE_UTF8 = 3;
@@ -68,7 +68,7 @@ public class IetfAttrSyntax implements DEREncodable {
         seq = (ASN1Sequence) seq.getObjectAt(i);
 
         for (Enumeration e = seq.getObjects(); e.hasMoreElements();) {
-            DERObject obj = (DERObject) e.nextElement();
+            ASN1Primitive obj = (ASN1Primitive) e.nextElement();
             int type;
 
             if (obj instanceof DERObjectIdentifier) {
@@ -105,7 +105,7 @@ public class IetfAttrSyntax implements DEREncodable {
         return values;
     }
 
-    public DERObject getDERObject() {
+    public ASN1Primitive toASN1Primitive() {
         DEREncodableVector v = new DEREncodableVector();
 
         if (policyAuthority != null) {
@@ -115,7 +115,7 @@ public class IetfAttrSyntax implements DEREncodable {
         DEREncodableVector v2 = new DEREncodableVector();
 
         for (Iterator i = values.iterator(); i.hasNext();) {
-            v2.add((DEREncodable) i.next());
+            v2.add((ASN1Encodable) i.next());
         }
 
         v.add(new DERSequence(v2));

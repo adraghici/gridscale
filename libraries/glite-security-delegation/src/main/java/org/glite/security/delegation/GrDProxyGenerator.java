@@ -42,8 +42,8 @@ import java.util.TimeZone;
 import org.apache.log4j.Logger;
 import org.bouncycastle.asn1.ASN1EncodableVector;
 import org.bouncycastle.asn1.ASN1InputStream;
+import org.bouncycastle.asn1.ASN1Primitive;
 import org.bouncycastle.asn1.ASN1Sequence;
-import org.bouncycastle.asn1.DERObject;
 import org.bouncycastle.asn1.DERPrintableString;
 import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.asn1.DERSet;
@@ -129,7 +129,7 @@ public class GrDProxyGenerator {
         X509Certificate[] cp = new X509Certificate[userCert.length + 1];
 
         ASN1InputStream derin = new ASN1InputStream(inTCertReq);
-        DERObject reqInfo = derin.readObject();
+        ASN1Primitive reqInfo = derin.readObject();
         PKCS10CertificationRequest certReq = new PKCS10CertificationRequest(
                 (DERSequence) reqInfo);
         logger.debug("Number of Certificates in chain : "
@@ -226,7 +226,7 @@ public class GrDProxyGenerator {
                 new ByteArrayInputStream(inCertReq), GrDPConstants.CRH,
                 GrDPConstants.CRF));
         ASN1InputStream derin = new ASN1InputStream(inTCertReq);
-        DERObject reqInfo = derin.readObject();
+        ASN1Primitive reqInfo = derin.readObject();
         PKCS10CertificationRequest certReq = new PKCS10CertificationRequest(
                 (DERSequence) reqInfo);
 
@@ -288,7 +288,7 @@ public class GrDProxyGenerator {
         ASN1InputStream derin = new ASN1InputStream(new ByteArrayInputStream(
                 GrDPX509Util.readPEM(inCertReq, GrDPConstants.CRH,
                         GrDPConstants.CRF)));
-        DERObject reqInfo = derin.readObject();
+        ASN1Primitive reqInfo = derin.readObject();
         certRequest = new PKCS10CertificationRequest(
                 (DERSequence) reqInfo);
 
@@ -530,7 +530,7 @@ public class GrDProxyGenerator {
 
         X509Name issuer = (X509Name) issuerCert.getSubjectDN();
 
-        ASN1Sequence seqSubject = (ASN1Sequence) issuer.getDERObject();
+        ASN1Sequence seqSubject = (ASN1Sequence) issuer.toASN1Primitive();
 
         logger.debug("SubjectDN of IssuerCert" + issuer);
 
@@ -543,7 +543,7 @@ public class GrDProxyGenerator {
         ASN1EncodableVector subjectVector = new ASN1EncodableVector();
 
         while (subjectParts.hasMoreElements()) {
-            DERObject part = (DERObject) subjectParts.nextElement();
+            ASN1Primitive part = (ASN1Primitive) subjectParts.nextElement();
             subjectVector.add(part);
         }
 

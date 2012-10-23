@@ -13,11 +13,11 @@
  *********************************************************************/
 package org.glite.voms.ac;
 
+import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.ASN1OctetString;
+import org.bouncycastle.asn1.ASN1Primitive;
 import org.bouncycastle.asn1.ASN1Sequence;
-import org.bouncycastle.asn1.DEREncodable;
 import org.bouncycastle.asn1.DEREncodableVector;
-import org.bouncycastle.asn1.DERObject;
 import org.bouncycastle.asn1.DEROctetString;
 import org.bouncycastle.asn1.DERSequence;
 
@@ -27,7 +27,7 @@ import org.bouncycastle.asn1.DERSequence;
  *
  * @author Vincenzo Ciaschini
  */
-public class GenericAttribute implements DEREncodable {
+public class GenericAttribute implements ASN1Encodable {
     private String name;
     private String value;
     private String qualifier;
@@ -104,7 +104,7 @@ public class GenericAttribute implements DEREncodable {
      *
      * @return the DERObject
      */
-    public DERObject getDERObject() {
+    public ASN1Primitive toASN1Primitive() {
         DEREncodableVector v = new DEREncodableVector();
 
         v.add(new DEROctetString(name.getBytes()));

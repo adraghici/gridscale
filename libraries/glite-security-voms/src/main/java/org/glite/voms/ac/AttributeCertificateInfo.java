@@ -11,24 +11,25 @@ import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Vector;
+import org.bouncycastle.asn1.ASN1Encodable;
 
 import org.bouncycastle.asn1.ASN1EncodableVector;
 import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.ASN1OctetString;
+import org.bouncycastle.asn1.ASN1Primitive;
 import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.ASN1TaggedObject;
 import org.bouncycastle.asn1.DERBitString;
-import org.bouncycastle.asn1.DERConstructedSet;
-import org.bouncycastle.asn1.DEREncodable;
 import org.bouncycastle.asn1.DEREncodableVector;
 import org.bouncycastle.asn1.DERGeneralizedTime;
 import org.bouncycastle.asn1.DERIA5String;
 import org.bouncycastle.asn1.DERInteger;
-import org.bouncycastle.asn1.DERObject;
 import org.bouncycastle.asn1.DERObjectIdentifier;
 import org.bouncycastle.asn1.DEROctetString;
 import org.bouncycastle.asn1.DERSequence;
+import org.bouncycastle.asn1.DERSet;
 import org.bouncycastle.asn1.DERTaggedObject;
+import org.bouncycastle.asn1.DLSet;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.bouncycastle.asn1.x509.AttCertValidityPeriod;
 import org.bouncycastle.asn1.x509.GeneralName;
@@ -41,7 +42,7 @@ import org.glite.voms.FQAN;
  *
  * @author Joni Hahkala, Olle Mulmo
  */
-public class AttributeCertificateInfo implements DEREncodable {
+public class AttributeCertificateInfo implements ASN1Encodable {
     DERInteger version;
     Holder holder;
     AttCertIssuer issuer;
@@ -95,7 +96,7 @@ public class AttributeCertificateInfo implements DEREncodable {
             s3 = (ASN1Sequence) new DERSequence(v);
         }
 
-        attrCertValidityPeriod = new AttCertValidityPeriod(s3);
+        attrCertValidityPeriod = AttCertValidityPeriod.getInstance(s3);
         attributes = (ASN1Sequence) seq.getObjectAt(6);
 
         // getting FQANs
@@ -117,12 +118,12 @@ public class AttributeCertificateInfo implements DEREncodable {
                 ASN1Sequence attribute = (ASN1Sequence) e.nextElement();
 
                 if (VOMS_ATTR_OID.equals(((DERObjectIdentifier) attribute.getObjectAt(0)).getId())) {
-                    DERConstructedSet set = (DERConstructedSet) attribute.getObjectAt(1);
+                    DLSet set = (DLSet) attribute.getObjectAt(1);
 
                     for (Enumeration s = set.getObjects(); s.hasMoreElements();) {
                         IetfAttrSyntax attr = new IetfAttrSyntax((ASN1Sequence)s.nextElement());
                         String url = ((DERIA5String) GeneralName.getInstance(((ASN1Sequence) attr.getPolicyAuthority()
-                                                                              .getDERObject()).getObjectAt(0))
+                                                                              .toASN1Primitive()).getObjectAt(0))
                                       .getName()).getString();
                         int idx = url.indexOf("://");
 
@@ -175,34 +176,34 @@ public class AttributeCertificateInfo implements DEREncodable {
         //        System.out.println("Getting AC_TARGET");
         if (extensions.getExtension(AC_TARGET_OID_DER) != null) {
             byte[] data = (extensions.getExtension(AC_TARGET_OID_DER).getValue().getOctets());
-            DERObject dobj = null;
+            ASN1Primitive dobj = null;
             try {
                 dobj = new ASN1InputStream(new ByteArrayInputStream(data)).readObject();
 
                 //            System.out.println("DOBJ Class: " + dobj.getClass());
                 acTargets = new ACTargets(ASN1Sequence.getInstance(dobj));
             } catch (Exception e) {
-                throw new IllegalArgumentException("DERO: " + e.getMessage());
+                throw new IllegalArgumentException("DERO: " + e.getMessage(), e);
             }
         }
 
         //        System.out.println("Getting AC_CERTS");
         if (extensions.getExtension(AC_CERTS_OID_DER) != null) {
             byte[] data = (extensions.getExtension(AC_CERTS_OID_DER).getValue().getOctets());
-            DERObject dobj = null;
+            ASN1Primitive dobj = null;
             try {
                 dobj = new ASN1InputStream(new ByteArrayInputStream(data)).readObject();
                 //             System.out.println("DOBJ Class: " + dobj.getClass());
                 acCerts = new ACCerts(ASN1Sequence.getInstance(dobj));
             } catch (Exception e) {
-                throw new IllegalArgumentException("DERO: " + e.getMessage());
+                throw new IllegalArgumentException("DERO: " + e.getMessage(), e);
             }
         }
 
         //        System.out.println("Getting FULL_ATTRIBUTES");
         if (extensions.getExtension(AC_FULL_ATTRIBUTES_OID_DER) != null) {
             byte[] data = (extensions.getExtension(AC_FULL_ATTRIBUTES_OID_DER).getValue().getOctets());
-            DERObject dobj = null;
+            ASN1Primitive dobj = null;
             try {
                 dobj = new ASN1InputStream(new ByteArrayInputStream(data)).readObject();
 
@@ -326,7 +327,7 @@ public class AttributeCertificateInfo implements DEREncodable {
      *
      * </pre>
      */
-    public DERObject getDERObject() {
+    public ASN1Primitive toASN1Primitive() {
         ASN1EncodableVector v = new ASN1EncodableVector();
         v.add(version);
         v.add(holder);

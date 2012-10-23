@@ -18,12 +18,12 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Vector;
+import org.bouncycastle.asn1.ASN1Encodable;
+import org.bouncycastle.asn1.ASN1Primitive;
 
 import org.bouncycastle.asn1.ASN1Sequence;
-import org.bouncycastle.asn1.DEREncodable;
 import org.bouncycastle.asn1.DEREncodableVector;
 import org.bouncycastle.asn1.DERIA5String;
-import org.bouncycastle.asn1.DERObject;
 import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.asn1.x509.GeneralName;
 import org.bouncycastle.asn1.x509.GeneralNames;
@@ -34,7 +34,7 @@ import org.bouncycastle.asn1.x509.GeneralNames;
  *
  * @author Vincenzo Ciaschini
  */
-public class AttributeHolder implements DEREncodable {
+public class AttributeHolder implements ASN1Encodable {
     private List l;
     private GeneralNames grantor;
 
@@ -90,7 +90,7 @@ public class AttributeHolder implements DEREncodable {
      * @return the grantor.
      */
     public String getGrantor() {
-        ASN1Sequence seq = ASN1Sequence.getInstance(grantor.getDERObject());
+        ASN1Sequence seq = ASN1Sequence.getInstance(grantor.toASN1Primitive());
         GeneralName  name  = GeneralName.getInstance(seq.getObjectAt(0));
         return DERIA5String.getInstance(name.getName()).getString();
     }
@@ -110,7 +110,7 @@ public class AttributeHolder implements DEREncodable {
      *
      * @return the DERObject
      */
-    public DERObject getDERObject() {
+    public ASN1Primitive toASN1Primitive() {
         DEREncodableVector v = new DEREncodableVector();
 
         v.add(grantor);

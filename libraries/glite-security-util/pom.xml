@@ -18,8 +18,8 @@
         </dependency>
         <dependency>
             <groupId>org.bouncycastle</groupId>
-            <artifactId>bcprov-jdk15</artifactId>
-            <version>1.45</version>
+            <artifactId>bcpkix-jdk15on</artifactId>
+            <version>${lib.org.bouncycastle.version}</version>
         </dependency>
     </dependencies>
     

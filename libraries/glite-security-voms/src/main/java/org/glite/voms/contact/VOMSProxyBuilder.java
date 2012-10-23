@@ -56,6 +56,7 @@ import java.security.cert.CertificateEncodingException;
 import java.util.logging.Level;
 
 import org.apache.log4j.Logger;
+import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 
 import org.bouncycastle.asn1.DEREncodableVector;
 import org.bouncycastle.asn1.DERSequence;
@@ -67,13 +68,13 @@ import org.bouncycastle.x509.X509V3CertificateGenerator;
 
 
 import org.glite.voms.ac.AttributeCertificate;
+import org.globus.gsi.CredentialException;
 import org.globus.gsi.GSIConstants;
 import org.globus.gsi.GSIConstants.CertificateType;
 import org.globus.gsi.GSIConstants.DelegationType;
 import org.globus.gsi.X509Credential;
 
 import org.globus.gsi.bc.BouncyCastleCertProcessingFactory;
-import org.globus.gsi.bc.X509NameHelper;
 
 import org.globus.gsi.proxy.ext.ProxyPolicy;
 import org.globus.gsi.util.ProxyCertificateUtil;
@@ -161,7 +162,7 @@ public class VOMSProxyBuilder {
             // factory.createCredential(cred.getUserChain(),  cred.getUserKey().getPrivateKey(),512, lifetime, GSIConstants.DELEGATION_FULL );
             return factory.createCredential(
                     cred.getUserChain(),
-                    cred.getUserKey().getPrivateKey(),
+                    cred.getUserKey(),
                     512,
                     lifetime,
                     delegationMode);
@@ -205,7 +206,7 @@ public class VOMSProxyBuilder {
             // factory.createCredential(cred.getUserChain(),  cred.getUserKey().getPrivateKey(),512, lifetime, GSIConstants.DELEGATION_FULL );
             return factory.createCredential(
                     cred.getUserChain(),
-                    cred.getUserKey().getPrivateKey(),
+                    cred.getUserKey(),
                     512,
                     lifetime,
                     certype);
@@ -316,12 +317,12 @@ public class VOMSProxyBuilder {
         KeyUsage keyUsage = new KeyUsage(KeyUsage.digitalSignature
                 | KeyUsage.keyEncipherment | KeyUsage.dataEncipherment);
         extensions.put("2.5.29.15", ExtensionData.creator("2.5.29.15",
-                keyUsage.getDERObject()));
+                keyUsage.toASN1Primitive()));
 
         //        try {
         X509Credential proxy = myCreateCredential(
                 cred.getUserChain(),
-                cred.getUserKey().getPrivateKey(), 512, lifetime,
+                cred.getUserKey(), 512, lifetime,
                 delegType, gtVersion, extensions, policyType);
 
         return proxy;
@@ -454,7 +455,7 @@ public class VOMSProxyBuilder {
                         }
                     } else {
                         try {
-                            policy = new ProxyPolicy(new DERObjectIdentifier(policyType));
+                            policy = new ProxyPolicy(new ASN1ObjectIdentifier(policyType));
                         } catch (IllegalArgumentException e) {
                             throw new VOMSException("OID required as policyType");
                         }
@@ -463,11 +464,11 @@ public class VOMSProxyBuilder {
                     if(ProxyCertificateUtil.isGsi3Proxy(gtVersion)) {
                             extensions.put(PROXY_CERT_INFO_V3_OID,
                                     ExtensionData.creator(PROXY_CERT_INFO_V3_OID,
-                                    new MyProxyCertInfo(policy, gtVersion).getDERObject()));
+                                    new MyProxyCertInfo(policy, gtVersion).toASN1Primitive()));
                     } else if(ProxyCertificateUtil.isGsi4Proxy(gtVersion)) {
                             extensions.put(PROXY_CERT_INFO_V4_OID,
                                     ExtensionData.creator(PROXY_CERT_INFO_V4_OID, true,
-                                    new MyProxyCertInfo(policy, gtVersion).getDERObject()));
+                                    new MyProxyCertInfo(policy, gtVersion).toASN1Primitive()));
                     }
 
                 }
@@ -572,7 +573,7 @@ public class VOMSProxyBuilder {
                 log.error(e.getMessage(), e);
             }
             throw new VOMSException("Error saving generated proxy: " + e.getMessage(), e);
-        } catch (CertificateEncodingException e) {
+        } catch (CredentialException e) {
             log.error("Error saving generated proxy: " + e.getMessage());
 
             if (log.isDebugEnabled()) {

@@ -23,13 +23,14 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Vector;
+import org.bouncycastle.asn1.ASN1Encodable;
+import org.bouncycastle.asn1.ASN1Primitive;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.asn1.ASN1Sequence;
-import org.bouncycastle.asn1.DEREncodable;
 import org.bouncycastle.asn1.DEREncodableVector;
-import org.bouncycastle.asn1.DERObject;
 import org.bouncycastle.asn1.DERSequence;
+import org.bouncycastle.asn1.DLSequence;
 import org.bouncycastle.asn1.x509.X509CertificateStructure;
 import org.bouncycastle.jce.provider.X509CertificateObject;
 
@@ -38,7 +39,7 @@ import org.bouncycastle.jce.provider.X509CertificateObject;
  *
  * @author Vincenzo Ciaschini.
  */
-public class ACCerts implements DEREncodable {
+public class ACCerts implements ASN1Encodable {
     List l;
 
     /**
@@ -82,7 +83,7 @@ public class ACCerts implements DEREncodable {
         for (Enumeration e = seq.getObjects(); e.hasMoreElements();){
             Object o = e.nextElement();
             //            System.out.println("O CLASS: " + o.getClass());
-            if (o instanceof DERSequence) {
+            if (o instanceof DLSequence) {
                 ASN1Sequence s = ASN1Sequence.getInstance(o);
                 byte[] data = null;
                 try {
@@ -135,7 +136,7 @@ public class ACCerts implements DEREncodable {
      *
      * @return the DERObject
      */
-    public DERObject getDERObject() {
+    public ASN1Primitive toASN1Primitive() {
         DEREncodableVector v = new DEREncodableVector();
 
         ListIterator li = l.listIterator();
