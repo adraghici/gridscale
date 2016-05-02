@@ -20,45 +20,66 @@ package fr.iscpif.gridscale.aws
 import java.io.File
 
 import fr.iscpif.gridscale.authentication.PrivateKey
-import fr.iscpif.gridscale.aws.AWSJobService.AWSJob
+import fr.iscpif.gridscale.aws.Starcluster.Config
 import fr.iscpif.gridscale.jobservice._
+import fr.iscpif.gridscale.sge.{SGEJobDescription, SGEJobService}
 import fr.iscpif.gridscale.ssh._
-import fr.iscpif.gridscale.ssh.SSHJobService._
-import fr.iscpif.gridscale.tools.shell.{ Command, BashShell }
+import fr.iscpif.gridscale.tools.shell.{BashShell, Command}
 import org.jclouds.ContextBuilder
 import org.jclouds.aws.ec2.compute.AWSEC2TemplateOptions
-import org.jclouds.compute.domain.{ NodeMetadata, OsFamily, Template }
-import org.jclouds.compute.{ ComputeService, ComputeServiceContext }
+import org.jclouds.compute.domain.{NodeMetadata, OsFamily, Template}
+import org.jclouds.compute.{ComputeService, ComputeServiceContext}
 import org.jclouds.ec2.domain.InstanceType
 import org.jclouds.sshj.config.SshjSshClientModule
 
+import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
-
 import scala.io.Source
 
 object AWSJobService {
 
+  val Gridscale = "gridscale"
   val Provider = "aws-ec2"
   val CoordinatorImageId = "ami-b7d8cedd"
   val Group = "gridscale-aws"
   val User = "ubuntu"
+  val Root = "root"
+  val DefaultInstanceType = "m1.small"
+  val ClusterName = "gridscale-cluster"
 
-  def apply(region: String, awsUser: String, awsKeypairName: String, awsCredentialsPath: String, privateKeyPath: String) = {
-    val (_region, _awsKeypairName) = (region, awsKeypairName)
-    val (awsKeyId, awsSecretKey) = readAWSCredentials(awsUser, awsCredentialsPath)
+  def apply(
+       region: String,
+       awsUserName: String,
+       awsUserId: String,
+       awsKeypairName: String,
+       awsCredentialsPath: String,
+       privateKeyPath: String,
+       clusterSize: Int) = {
+    val (_region, _awsUserId, _awsKeypairName, _privateKeyPath) = (region, awsUserId, awsKeypairName, privateKeyPath)
+    val (_awsKeyId, _awsSecretKey) = readAWSCredentials(awsUserName, awsCredentialsPath)
+    val starclusterConfig: Config = new Config(
+      awsKeyId = _awsKeyId,
+      awsSecretKey = _awsSecretKey,
+      awsUserId = _awsUserId,
+      privateKeyPath = _privateKeyPath,
+      instanceType = DefaultInstanceType,
+      size = clusterSize)
+
     new AWSJobService {
       override val region = _region
       override val awsKeypairName = _awsKeypairName
-      override val client = createClient(awsKeyId, awsSecretKey)
+      override val client = createClient(_awsKeyId, _awsSecretKey)
       override val credential = sshPrivateKey(PrivateKey(User, new File(privateKeyPath), ""))
-      override lazy val host = coordinator.getPublicAddresses.asScala.head
+      override lazy val host = coordinator.getPublicAddresses.head
       override val port = 22
       override val timeout = 1 minute
+      override val starcluster: Starcluster = Starcluster(this, starclusterConfig)
+      override lazy val sge = SGEJobService(starcluster.masterIp)(PrivateKey(Root, new File(starcluster.privateKeyPath), ""))
     }
   }
 
-  class AWSJob(val description: AWSJobDescription, val id: String)
+  class AWSJob(val description: SGEJobDescription, val id: String)
 
   private def createClient(awsKeyId: String, awsSecretKey: String): ComputeService = {
     ContextBuilder.newBuilder(Provider)
@@ -86,41 +107,56 @@ object AWSJobService {
 import fr.iscpif.gridscale.aws.AWSJobService._
 
 trait AWSJobService extends JobService with SSHHost with SSHStorage with BashShell with AutoCloseable {
-  type J = AWSJob
-  type D = AWSJobDescription
+  type J = SGEJobService.SGEJob
+  type D = SGEJobDescription
 
   def region: String
   def awsKeypairName: String
   def client: ComputeService
+  def starcluster: Starcluster
+  def sge: SGEJobService
   var coordinator: NodeMetadata = _
 
-  def start(): Unit = {
-    coordinator = client.createNodesInGroup(Group, 1, createTemplate(region, client)).asScala.head
-    // Wait for a short period to make sure that the VM is initialized and ports are opened
-    println("waiting for initialization")
-    MINUTES.sleep(1)
+  def submit(description: D): J = sge.submit(description)
+
+  def cancel(job: J) = sge.cancel(job)
+
+  def state(job: J): JobState = sge.state(job)
+
+  def purge(job: J) = sge.purge(job)
+
+  def start() = {
+    println("starting coordinator...")
+    coordinator = client.createNodesInGroup(Group, 1, createTemplate(region, client)).head
+    // Wait for a short period to make sure that{ the VM is initialized and ports are opened
+    println("waiting for coordinator initialization...")
+    SECONDS.sleep(45)
+    println("starcluster setup...")
+    starcluster.configure()
+    println("starting starcluster...")
+    starcluster.start()
+    println("starcluster master ip: " + starcluster.masterIp)
+    println(s"starcluster private key path: ${starcluster.privateKeyPath}")
+    println("setting starcluster master sge environment vars...")
+    sge.setEnv(List(
+      ("SGE_ROOT", "/opt/sge6"),
+      ("PATH", "$PATH:/opt/sge6/bin/linux-x64"),
+      ("SGE_QMASTER_PORT", "63231"),
+      ("SGE_CLUSTER_NAME", "starcluster"),
+      ("SGE_CELL", "default"),
+      ("SGE_EXECD_PORT", "63232")))
+    println("ready.")
   }
 
-  def kill(): Unit = {
+  def addNodes(count: Int) = starcluster.addNodes(count)
+
+  def kill() = {
     println(s"shutting down coordinator ${coordinator.getId}")
     client.destroyNode(coordinator.getId)
     println("coordinator down")
   }
 
-  def testScript(): Unit = withConnection { implicit connection ⇒
-    exec("mkdir -p testdir")
-    exec("echo working > testdir/file.txt")
-  }
-
   def close(): Unit = client.getContext.close()
-
-  def submit(description: D): J = ???
-
-  def cancel(job: J): Unit = ???
-
-  def state(job: J): JobState = ???
-
-  def purge(job: J): Unit = ???
 
   private def createTemplate(region: String, client: ComputeService): Template = {
     val template = client.templateBuilder()
@@ -132,5 +168,4 @@ trait AWSJobService extends JobService with SSHHost with SSHStorage with BashShe
     val options = template.getOptions.as(classOf[AWSEC2TemplateOptions]).keyPair(awsKeypairName)
     template
   }
-
 }

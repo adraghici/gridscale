@@ -173,7 +173,7 @@ trait Modules <: Libraries with Settings {
     libraryDependencies += "com.jcraft" % "jzlib" % "1.1.3"
     )
 
-  lazy val gridscaleAWS = Project(id = "aws", base = file("modules/gridscale-aws"), settings = defaultSettings ++ exportSettings) dependsOn(gridscale, gridscaleSSH) settings (
+  lazy val gridscaleAWS = Project(id = "aws", base = file("modules/gridscale-aws"), settings = defaultSettings ++ exportSettings) dependsOn(gridscale, gridscaleSSH, gridscaleSGE) settings (
     libraryDependencies += scalaTest,
     libraryDependencies += mockito,
     libraryDependencies += "org.apache.jclouds" % "jclouds-all" % "1.9.2",
