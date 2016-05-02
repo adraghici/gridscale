@@ -35,21 +35,22 @@ object Main extends App {
       clusterSize = 1)
 
   managed(awsService) acquireAndGet {
-    aws ⇒
-      {
-        aws.start()
-        println("job submission...")
-        val description = new SGEJobDescription {
-          def executable = "/bin/echo"
-          def arguments = "hello > test2.txt"
-          def workDirectory = aws.home + "/testjob/"
-        }
-
-        val job = aws.submit(description)
-
-        val state = aws.untilFinished(job) { println }
-
-        aws.purge(job)
+    aws ⇒ {
+      aws.start()
+      println("job submission...")
+      val description = new SGEJobDescription {
+        def executable = "/bin/echo"
+        def arguments = "hello > test.txt"
+        def workDirectory = aws.home + "/testjob/"
       }
+
+      val job = aws.submit(description)
+
+      val state = aws.untilFinished(job) { println }
+
+      aws.purge(job)
+
+      aws.kill()
+    }
   }
 }

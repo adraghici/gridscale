@@ -151,9 +151,11 @@ trait AWSJobService extends JobService with SSHHost with SSHStorage with BashShe
   def addNodes(count: Int) = starcluster.addNodes(count)
 
   def kill() = {
-    println(s"shutting down coordinator ${coordinator.getId}")
+    println("shutting down starcluster...")
+    starcluster.terminate()
+    println(s"shutting down coordinator ${coordinator.getId}...")
     client.destroyNode(coordinator.getId)
-    println("coordinator down")
+    println("cleanup done.")
   }
 
   def close(): Unit = client.getContext.close()
