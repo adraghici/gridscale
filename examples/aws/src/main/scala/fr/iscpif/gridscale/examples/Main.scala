@@ -17,21 +17,39 @@
 
 package fr.iscpif.gridscale.examples
 
+import fr.iscpif.gridscale._
 import fr.iscpif.gridscale.aws.AWSJobService
+import fr.iscpif.gridscale.sge.SGEJobDescription
+
 import resource.managed
 
 object Main extends App {
 
-  val awsService = AWSJobService("us-east-1", "adrian", "gridscale", "/Users/adrian/.aws/credentials.csv", "/Users/adrian/.ssh/id_rsa")
+  val awsService = AWSJobService(
+      region = "us-east-1",
+      awsUserName = "adrian",
+      awsUserId = "788108661243",
+      awsKeypairName = "gridscale",
+      awsCredentialsPath = "/Users/adrian/.aws/credentials.csv",
+      privateKeyPath = "/Users/adrian/.ssh/id_rsa",
+      clusterSize = 1)
 
   managed(awsService) acquireAndGet {
     aws ⇒
       {
-        println("starting stuff")
         aws.start()
-        println(aws.host)
-        println("running test script")
-        aws.testScript()
+        println("job submission...")
+        val description = new SGEJobDescription {
+          def executable = "/bin/echo"
+          def arguments = "hello > test2.txt"
+          def workDirectory = aws.home + "/testjob/"
+        }
+
+        val job = aws.submit(description)
+
+        val state = aws.untilFinished(job) { println }
+
+        aws.purge(job)
       }
   }
 }
