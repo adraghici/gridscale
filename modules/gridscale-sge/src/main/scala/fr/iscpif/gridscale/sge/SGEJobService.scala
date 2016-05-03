@@ -74,7 +74,7 @@ trait SGEJobService extends JobService with SSHHost with SSHStorage with BashShe
   type D = SGEJobDescription
 
   def setEnv(vars: List[(String, String)]) = withConnection { implicit connection ⇒
-    vars.foreach(t => exec(s"echo 'export ${t._1}=${t._2}' >> .bashrc"))
+    vars.foreach(t ⇒ exec(s"echo 'export ${t._1}=${t._2}' >> .bashrc"))
   }
 
   def submit(description: D): J = withConnection { implicit connection ⇒

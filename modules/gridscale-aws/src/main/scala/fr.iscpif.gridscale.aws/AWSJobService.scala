@@ -22,13 +22,13 @@ import java.io.File
 import fr.iscpif.gridscale.authentication.PrivateKey
 import fr.iscpif.gridscale.aws.Starcluster.Config
 import fr.iscpif.gridscale.jobservice._
-import fr.iscpif.gridscale.sge.{SGEJobDescription, SGEJobService}
+import fr.iscpif.gridscale.sge.{ SGEJobDescription, SGEJobService }
 import fr.iscpif.gridscale.ssh._
-import fr.iscpif.gridscale.tools.shell.{BashShell, Command}
+import fr.iscpif.gridscale.tools.shell.{ BashShell, Command }
 import org.jclouds.ContextBuilder
 import org.jclouds.aws.ec2.compute.AWSEC2TemplateOptions
-import org.jclouds.compute.domain.{NodeMetadata, OsFamily, Template}
-import org.jclouds.compute.{ComputeService, ComputeServiceContext}
+import org.jclouds.compute.domain.{ NodeMetadata, OsFamily, Template }
+import org.jclouds.compute.{ ComputeService, ComputeServiceContext }
 import org.jclouds.ec2.domain.InstanceType
 import org.jclouds.sshj.config.SshjSshClientModule
 
@@ -49,13 +49,13 @@ object AWSJobService {
   val ClusterName = "gridscale-cluster"
 
   def apply(
-       region: String,
-       awsUserName: String,
-       awsUserId: String,
-       awsKeypairName: String,
-       awsCredentialsPath: String,
-       privateKeyPath: String,
-       clusterSize: Int) = {
+    region: String,
+    awsUserName: String,
+    awsUserId: String,
+    awsKeypairName: String,
+    awsCredentialsPath: String,
+    privateKeyPath: String,
+    clusterSize: Int) = {
     val (_region, _awsUserId, _awsKeypairName, _privateKeyPath) = (region, awsUserId, awsKeypairName, privateKeyPath)
     val (_awsKeyId, _awsSecretKey) = readAWSCredentials(awsUserName, awsCredentialsPath)
     val starclusterConfig: Config = new Config(

@@ -18,8 +18,8 @@
 package fr.iscpif.gridscale.aws
 
 import java.io.PrintWriter
-import java.nio.file.attribute.{PosixFilePermissions, PosixFileAttributes}
-import java.nio.file.{Files, Paths}
+import java.nio.file.attribute.{ PosixFilePermissions, PosixFileAttributes }
+import java.nio.file.{ Files, Paths }
 import java.util.UUID
 
 import fr.iscpif.gridscale.aws.AWSJobService.Gridscale
@@ -115,30 +115,30 @@ class Starcluster(service: AWSJobService, config: Starcluster.Config) extends Ba
 
   }
 
-  def start() = service.withConnection { implicit connection =>
+  def start() = service.withConnection { implicit connection ⇒
     exec(cmd("start", ("-r", "10"), Name))
   }
 
-  def terminate() = service.withConnection { implicit connection =>
+  def terminate() = service.withConnection { implicit connection ⇒
     exec("echo y | " + cmd("terminate", "-f", Name))
   }
 
-  def addNodes(count: Int) = service.withConnection { implicit connection =>
+  def addNodes(count: Int) = service.withConnection { implicit connection ⇒
     exec(cmd("addnode", ("-n", count.toString), Name))
   }
 
-  def masterIp = service.withConnection { implicit connection =>
+  def masterIp = service.withConnection { implicit connection ⇒
     val info = execReturnCodeOutput(cmd("listinstances"))._2
     val masterInfo = info.split("\n\n").filter(_.contains("master")).head
     val pattern = """public_ip:\s([\.\d]+)""".r
     pattern.findAllIn(masterInfo).matchData.next.group(1)
   }
 
-  private def writeConfig() = service.withConnection { implicit connection =>
+  private def writeConfig() = service.withConnection { implicit connection ⇒
     service.write(config.toString.getBytes, s"$path/config")
   }
 
-  private def createKeypair() = service.withConnection { implicit connection =>
+  private def createKeypair() = service.withConnection { implicit connection ⇒
     exec(cmd("createkey", ("-o", s"$path/$KeypairName"), KeypairName))
     // Hack because reading doesn't work
     val (_, privateKey, _) = execReturnCodeOutput(s"cat $path/$KeypairName")

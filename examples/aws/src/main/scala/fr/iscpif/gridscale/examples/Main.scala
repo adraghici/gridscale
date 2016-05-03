@@ -26,31 +26,32 @@ import resource.managed
 object Main extends App {
 
   val awsService = AWSJobService(
-      region = "us-east-1",
-      awsUserName = "adrian",
-      awsUserId = "788108661243",
-      awsKeypairName = "gridscale",
-      awsCredentialsPath = "/Users/adrian/.aws/credentials.csv",
-      privateKeyPath = "/Users/adrian/.ssh/id_rsa",
-      clusterSize = 1)
+    region = "us-east-1",
+    awsUserName = "adrian",
+    awsUserId = "788108661243",
+    awsKeypairName = "gridscale",
+    awsCredentialsPath = "/Users/adrian/.aws/credentials.csv",
+    privateKeyPath = "/Users/adrian/.ssh/id_rsa",
+    clusterSize = 1)
 
   managed(awsService) acquireAndGet {
-    aws ⇒ {
-      aws.start()
-      println("job submission...")
-      val description = new SGEJobDescription {
-        def executable = "/bin/echo"
-        def arguments = "hello > test.txt"
-        def workDirectory = aws.home + "/testjob/"
+    aws ⇒
+      {
+        aws.start()
+        println("job submission...")
+        val description = new SGEJobDescription {
+          def executable = "/bin/echo"
+          def arguments = "hello > test.txt"
+          def workDirectory = aws.home + "/testjob/"
+        }
+
+        val job = aws.submit(description)
+
+        val state = aws.untilFinished(job) { println }
+
+        aws.purge(job)
+
+        aws.kill()
       }
-
-      val job = aws.submit(description)
-
-      val state = aws.untilFinished(job) { println }
-
-      aws.purge(job)
-
-      aws.kill()
-    }
   }
 }
