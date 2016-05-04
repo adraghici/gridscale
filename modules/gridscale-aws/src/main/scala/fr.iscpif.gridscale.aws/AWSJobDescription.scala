@@ -17,7 +17,7 @@
 
 package fr.iscpif.gridscale.aws
 
-import fr.iscpif.gridscale.jobservice.JobDescription
+import fr.iscpif.gridscale.sge.SGEJobDescription
 
-trait AWSJobDescription extends JobDescription {
+trait AWSJobDescription <: SGEJobDescription {
 }

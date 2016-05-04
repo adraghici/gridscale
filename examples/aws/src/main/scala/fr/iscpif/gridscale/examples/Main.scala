@@ -18,7 +18,7 @@
 package fr.iscpif.gridscale.examples
 
 import fr.iscpif.gridscale._
-import fr.iscpif.gridscale.aws.AWSJobService
+import fr.iscpif.gridscale.aws.{ AWSJobDescription, AWSJobService }
 import fr.iscpif.gridscale.sge.SGEJobDescription
 
 import resource.managed
@@ -39,7 +39,7 @@ object Main extends App {
       {
         aws.start()
         println("job submission...")
-        val description = new SGEJobDescription {
+        val description = new AWSJobDescription {
           def executable = "/bin/echo"
           def arguments = "hello > test.txt"
           def workDirectory = aws.home + "/testjob/"
