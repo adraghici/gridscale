@@ -46,7 +46,7 @@ object Starcluster {
       awsSecretKey: String,
       privateKeyPath: String,
       instanceType: String,
-      size: Int = 1) {
+      val size: Int = 1) {
 
     override def toString = {
       val buf = new ScriptBuffer
@@ -61,6 +61,7 @@ object Starcluster {
       val buf = new ScriptBuffer
       buf += section("global")
       buf += assign("DEFAULT_TEMPLATE", Template)
+      buf += assign("ENABLE_EXPERIMENTAL", "True")
       buf.toString
     }
 
@@ -117,6 +118,7 @@ class Starcluster(service: AWSJobService, config: Starcluster.Config) extends Ba
 
   def start() = service.withConnection { implicit connection ⇒
     exec(cmd("start", ("-r", "10"), Name))
+    loadbalance(config.size)
   }
 
   def terminate() = service.withConnection { implicit connection ⇒
@@ -132,6 +134,10 @@ class Starcluster(service: AWSJobService, config: Starcluster.Config) extends Ba
     val masterInfo = info.split("\n\n").filter(_.contains("master")).head
     val pattern = """public_ip:\s([\.\d]+)""".r
     pattern.findAllIn(masterInfo).matchData.next.group(1)
+  }
+
+  private def loadbalance(maxNodes: Int) = service.withConnection { implicit connection =>
+    exec("nohup " + cmd("loadbalance", ("-m", maxNodes.toString), Name) + s" > ${path}/loadbalancer.log 2>&1 &")
   }
 
   private def writeConfig() = service.withConnection { implicit connection ⇒
