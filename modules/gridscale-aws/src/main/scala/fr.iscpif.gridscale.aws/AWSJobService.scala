@@ -160,6 +160,8 @@ trait AWSJobService extends JobService with SSHHost with SSHStorage with BashShe
 
   def close(): Unit = client.getContext.close()
 
+  override def home = "/home"
+
   private def createTemplate(region: String, client: ComputeService): Template = {
     val template = client.templateBuilder()
       .hardwareId(InstanceType.T1_MICRO)
