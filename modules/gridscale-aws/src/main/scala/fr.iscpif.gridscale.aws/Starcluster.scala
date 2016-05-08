@@ -18,8 +18,8 @@
 package fr.iscpif.gridscale.aws
 
 import java.io.PrintWriter
-import java.nio.file.attribute.{ PosixFilePermissions, PosixFileAttributes }
-import java.nio.file.{ Files, Paths }
+import java.nio.file.attribute.PosixFilePermissions
+import java.nio.file.{Files, Paths}
 import java.util.UUID
 
 import fr.iscpif.gridscale.aws.AWSJobService.Gridscale
@@ -136,7 +136,7 @@ class Starcluster(service: AWSJobService, config: Starcluster.Config) extends Ba
     pattern.findAllIn(masterInfo).matchData.next.group(1)
   }
 
-  private def loadbalance(maxNodes: Int) = service.withConnection { implicit connection =>
+  private def loadbalance(maxNodes: Int) = service.withConnection { implicit connection ⇒
     exec("nohup " + cmd("loadbalance", ("-m", maxNodes.toString), Name) + s" > ${path}/loadbalancer.log 2>&1 &")
   }
 
