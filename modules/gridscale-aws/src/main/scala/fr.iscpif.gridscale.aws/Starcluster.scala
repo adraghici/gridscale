@@ -19,7 +19,7 @@ package fr.iscpif.gridscale.aws
 
 import java.io.PrintWriter
 import java.nio.file.attribute.PosixFilePermissions
-import java.nio.file.{Files, Paths}
+import java.nio.file.{ Files, Paths }
 import java.util.UUID
 
 import fr.iscpif.gridscale.aws.AWSJobService.Gridscale
