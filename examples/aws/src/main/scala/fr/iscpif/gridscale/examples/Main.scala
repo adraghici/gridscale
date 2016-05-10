@@ -19,20 +19,18 @@ package fr.iscpif.gridscale.examples
 
 import fr.iscpif.gridscale._
 import fr.iscpif.gridscale.aws.{ AWSJobDescription, AWSJobService }
-import fr.iscpif.gridscale.sge.SGEJobDescription
-
 import resource.managed
 
 object Main extends App {
 
-  val awsService = AWSJobService(
+  val awsService = AWSJobService(new AWSJobService.Config(
     region = "us-east-1",
     awsUserName = "adrian",
     awsUserId = "788108661243",
     awsKeypairName = "gridscale",
     awsCredentialsPath = "/Users/adrian/.aws/credentials.csv",
     privateKeyPath = "/Users/adrian/.ssh/id_rsa",
-    clusterSize = 1)
+    clusterSize = 1))
 
   managed(awsService) acquireAndGet {
     aws ⇒
@@ -42,7 +40,7 @@ object Main extends App {
         val description = new AWSJobDescription {
           def executable = "/bin/echo"
           def arguments = "hello > test.txt"
-          def workDirectory = aws.home + "/testjob/"
+          def workDirectory = aws.sharedHome + "/testjob/"
         }
 
         val job = aws.submit(description)

@@ -29,7 +29,7 @@ import fr.iscpif.gridscale.tools.shell.BashShell
 import resource.managed
 
 object Starcluster {
-  val Name = "prodcluster"
+  val Name = "prodcluster" + UUID.randomUUID.toString
   val Tool = "starcluster"
   val Template = "jobcluster"
   val User = "sgeadmin"
@@ -37,6 +37,7 @@ object Starcluster {
   val Image = "ami-3393a45a"
   val KeypairName = "starcluster-" + UUID.randomUUID.toString
   val OwnerReadWritePermissions = "rw-------"
+  val SharedHome = "/home"
 
   def apply(service: AWSJobService, config: Config) = new Starcluster(service, config)
 
@@ -113,11 +114,10 @@ class Starcluster(service: AWSJobService, config: Starcluster.Config) extends Ba
     service.makeDir(path)
     writeConfig()
     createKeypair()
-
   }
 
   def start() = service.withConnection { implicit connection ⇒
-    exec(cmd("start", ("-r", "10"), Name))
+    exec(cmd("start", Name))
     loadbalance(config.size)
   }
 
@@ -159,6 +159,10 @@ class Starcluster(service: AWSJobService, config: Starcluster.Config) extends Ba
 
   private def cmd(instruction: String) = {
     s"$Tool $instruction"
+  }
+
+  private def cmd(instruction: String, arg: String) = {
+    s"$Tool $instruction $arg"
   }
 
   private def cmd(instruction: String, option: String, arg: String): String = {
