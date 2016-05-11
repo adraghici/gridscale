@@ -140,7 +140,7 @@ trait AWSJobService extends JobService with SSHHost with SSHStorage with BashShe
     coordinator = client.createNodesInGroup(Group, 1, createTemplate(region, client)).head
     // Wait for a short period to make sure that{ the VM is initialized and ports are opened
     println("waiting for coordinator initialization...")
-    SECONDS.sleep(30)
+    SECONDS.sleep(60)
     println("starcluster setup...")
     starcluster.configure()
     println("starting starcluster...")

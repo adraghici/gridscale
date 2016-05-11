@@ -29,13 +29,14 @@ import fr.iscpif.gridscale.tools.shell.BashShell
 import resource.managed
 
 object Starcluster {
-  val Name = "prodcluster" + UUID.randomUUID.toString
+  val UniqId = UUID.randomUUID.toString
+  val Name = "gridscale-cluster" + UniqId
   val Tool = "starcluster"
   val Template = "jobcluster"
   val User = "sgeadmin"
   val Shell = "bash"
   val Image = "ami-3393a45a"
-  val KeypairName = "starcluster-" + UUID.randomUUID.toString
+  val KeypairName = "starcluster-" + UniqId
   val OwnerReadWritePermissions = "rw-------"
   val SharedHome = "/home"
 
