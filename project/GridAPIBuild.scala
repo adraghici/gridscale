@@ -124,7 +124,9 @@ trait Bundles <: Modules with Settings {
     )
 
   lazy val awsBundle = Project(id = "awsbundle", base = file("bundles/aws"), settings = defaultSettings) enablePlugins(SbtOsgi)  settings(gridscaleOsgiSettings:_*) dependsOn (gridscaleAWS) settings(
-    name := "aws", noSSH
+    name := "aws", noSSH,
+    importPackage := Seq("!com.google.*", "*"),
+    privatePackage := Seq("com.google.*") ++ privatePackage.value
     )
 
   lazy val condorBundle = Project(id = "condorbundle", base = file("bundles/condor"), settings = defaultSettings) enablePlugins(SbtOsgi)  settings(gridscaleOsgiSettings:_*) dependsOn (gridscaleCondor) settings(
