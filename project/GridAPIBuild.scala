@@ -70,6 +70,7 @@ trait Examples <: Modules with Settings{
   lazy val egiwmsExample  = Project(id = "egiwmsexample", base = file("examples/egi/wms"), settings = defaultSettings ++ exportSettings) dependsOn (gridscaleEGI)
   lazy val egiWebDAVExample  = Project(id = "egiwebdavexample", base = file("examples/egi/webdav"), settings = defaultSettings ++ exportSettings) dependsOn (gridscaleEGI)
   lazy val egiDiracExample  = Project(id = "egidiracexample", base = file("examples/egi/dirac"), settings = defaultSettings ++ exportSettings) dependsOn (gridscaleEGI)
+  lazy val gceExample  = Project(id = "gceexample", base = file("examples/gce"), settings = defaultSettings ++ exportSettings) dependsOn (gridscaleGCE)
   lazy val condorExample = Project(id = "condorexample", base = file("examples/condor"), settings = defaultSettings ++ exportSettings) dependsOn (gridscaleCondor)
   lazy val slurmExample  = Project(id = "slurmexample", base = file("examples/slurm"), settings = defaultSettings ++ exportSettings) dependsOn (gridscaleSLURM)
   lazy val sgeExample    = Project(id = "sgeexample", base = file("examples/sge"), settings = defaultSettings ++ exportSettings) dependsOn (gridscaleSGE)
@@ -122,6 +123,12 @@ trait Bundles <: Modules with Settings {
     exportPackage := Seq("!net.schmizz.sshj.*", "!fr.iscpif.gridscale.ssh.impl.*") ++ exportPackage.value
     )
 
+  lazy val gceBundle = Project(id = "gcebundle", base = file("bundles/gce"), settings = defaultSettings) enablePlugins(SbtOsgi)  settings(gridscaleOsgiSettings:_*) dependsOn (gridscaleGCE) settings(
+    name := "gce", noSSH,
+    importPackage := Seq("!net.schmizz.*", "!org.*", "!com.*", "!javax.*", "!sun.*", "*"),
+    privatePackage := Seq("net.schmizz.*", "org.*", "com.*", "javax.*", "sun.*") ++ privatePackage.value
+    )
+
   lazy val condorBundle = Project(id = "condorbundle", base = file("bundles/condor"), settings = defaultSettings) enablePlugins(SbtOsgi)  settings(gridscaleOsgiSettings:_*) dependsOn (gridscaleCondor) settings(
     name := "condor", noSSH
     )
@@ -167,6 +174,16 @@ trait Modules <: Libraries with Settings {
   lazy val gridscaleSSH = Project(id = "ssh", base = file("modules/gridscale-ssh"), settings = defaultSettings ++ exportSettings) dependsOn (gridscale) settings (
     libraryDependencies += "net.schmizz" % "sshj" % "0.10.0",
     libraryDependencies += "com.jcraft" % "jzlib" % "1.1.3"
+    )
+
+  lazy val gridscaleGCE = Project(id = "gce", base = file("modules/gridscale-gce"), settings = defaultSettings ++ exportSettings) dependsOn(gridscale, gridscaleSSH, gridscaleSLURM) settings (
+    libraryDependencies += scalaTest,
+    libraryDependencies += mockito,
+    libraryDependencies += "org.apache.jclouds" % "jclouds-all" % "1.9.2",
+    libraryDependencies += "org.apache.jclouds.driver" % "jclouds-sshj" % "1.9.2",
+    libraryDependencies += "org.apache.jclouds.driver" % "jclouds-log4j" % "1.9.2",
+    libraryDependencies += "com.jcraft" % "jsch" % "0.1.53",
+    libraryDependencies += "com.jsuereth" % "scala-arm_2.11" % "2.0.0-M1"
     )
 
   lazy val gridscaleCondor = Project(id = "gridscalecondor", base = file("modules/gridscale-condor"), settings = defaultSettings ++ exportSettings) dependsOn(gridscale, gridscaleSSH) settings (
