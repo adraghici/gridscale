@@ -32,6 +32,7 @@ import fr.iscpif.gridscale.ssh._
 import fr.iscpif.gridscale.tools.shell.BashShell
 import org.jclouds.ContextBuilder
 import org.jclouds.aws.ec2.compute.AWSEC2TemplateOptions
+import org.jclouds.aws.ec2.AWSEC2ApiMetadata
 import org.jclouds.compute.{ ComputeService, ComputeServiceContext }
 import org.jclouds.compute.domain.{ NodeMetadata, OsFamily, Template }
 import org.jclouds.ec2.domain.InstanceType
@@ -40,7 +41,7 @@ import org.jclouds.sshj.config.SshjSshClientModule
 object AWSJobService {
 
   val Gridscale = "gridscale"
-  val Provider = "aws-ec2"
+  val Provider = new AWSEC2ApiMetadata()
   val CoordinatorImageId = "ami-b7d8cedd"
   val Group = "gridscale-aws"
   val User = "ubuntu"
