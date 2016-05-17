@@ -178,9 +178,9 @@ trait Modules <: Libraries with Settings {
   lazy val gridscaleAWS = Project(id = "aws", base = file("modules/gridscale-aws"), settings = defaultSettings ++ exportSettings) dependsOn(gridscale, gridscaleSSH, gridscaleSGE) settings (
     libraryDependencies += scalaTest,
     libraryDependencies += mockito,
-    libraryDependencies += "org.apache.jclouds" % "jclouds-all" % "1.9.2",
-    libraryDependencies += "org.apache.jclouds.driver" % "jclouds-sshj" % "1.9.2",
-    libraryDependencies += "org.apache.jclouds.driver" % "jclouds-log4j" % "1.9.2",
+    libraryDependencies += "org.apache.jclouds" % "jclouds-all" % jCloudsVersion,
+    libraryDependencies += "org.apache.jclouds.driver" % "jclouds-sshj" % jCloudsVersion,
+    libraryDependencies += "org.apache.jclouds.driver" % "jclouds-log4j" % jCloudsVersion,
     libraryDependencies += "com.jcraft" % "jsch" % "0.1.53",
     libraryDependencies += "com.jsuereth" % "scala-arm_2.11" % "2.0.0-M1"
     )
@@ -213,6 +213,8 @@ trait Libraries <: Settings {
   import sbtscalaxb.Plugin._
 
   lazy val jglobusVersion = "2.2.0-20150814"
+
+  lazy val jCloudsVersion = "1.9.2"
 
   lazy val dispatch = "net.databinder.dispatch" %% "dispatch-core" % "0.11.1"
 
