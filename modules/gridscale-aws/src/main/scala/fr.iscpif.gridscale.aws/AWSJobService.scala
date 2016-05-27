@@ -92,8 +92,8 @@ object AWSJobService {
   }
 
   def createSGEJobService(starcluster: Starcluster) = {
+    Logger.log(FINE, s"Creating SGE job service on starcluster master - log in: ssh $Root@${starcluster.masterIp} -i ${starcluster.privateKeyPath}.")
     SGEJobService(starcluster.masterIp)(PrivateKey(Root, new File(starcluster.privateKeyPath), ""))
-    Logger.log(FINE, s"created SGE job service on starcluster master - log in: ssh $Root@${starcluster.masterIp} -i ${starcluster.privateKeyPath}")
   }
 
   def readAWSCredentials(user: String, path: String): (String, String) = {
