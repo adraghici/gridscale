@@ -108,8 +108,9 @@ object Starcluster {
 import fr.iscpif.gridscale.aws.Starcluster._
 
 class Starcluster(service: AWSJobService, config: Starcluster.Config) extends BashShell {
-  lazy val path = s"${service.home}/${hidden("starcluster")}"
-  lazy val privateKeyPath = System.getProperty("user.home") + s"/${hidden(Gridscale)}/$KeypairName"
+  private val userHome: String = System.getProperty("user.home")
+  lazy val path = s"${userHome}/${hidden("starcluster")}"
+  lazy val privateKeyPath = userHome + s"/${hidden(Gridscale)}/$KeypairName"
 
   def configure() = {
     service.makeDir(path)
