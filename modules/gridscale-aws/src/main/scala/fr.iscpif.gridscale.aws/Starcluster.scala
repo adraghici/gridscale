@@ -108,7 +108,7 @@ object Starcluster {
 import fr.iscpif.gridscale.aws.Starcluster._
 
 class Starcluster(service: AWSJobService, config: Starcluster.Config) extends BashShell {
-  private val userHome: String = System.getProperty("user.home")
+  private val userHome = System.getProperty("user.home")
   lazy val path = s"${userHome}/${hidden("starcluster")}"
   lazy val privateKeyPath = userHome + s"/${hidden(Gridscale)}/$KeypairName"
 
