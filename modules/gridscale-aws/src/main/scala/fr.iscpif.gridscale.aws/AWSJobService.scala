@@ -46,8 +46,7 @@ object AWSJobService {
   val Provider = new AWSEC2ProviderMetadata()
   val CoordinatorImageId = "ami-b7d8cedd"
   val Group = "gridscale-aws"
-  val User = "ubuntu"
-  val Root = "root"
+  val CoordinatorUser = "ubuntu"
   val DefaultInstanceType = "m1.small"
   val ClusterName = "gridscale-cluster"
   val Logger = JLogger.getLogger(classOf[AWSJobService].getName)
@@ -84,7 +83,7 @@ object AWSJobService {
   }
 
   def createCredential(privateKeyPath: String) = {
-    sshPrivateKey(PrivateKey(User, new File(privateKeyPath), ""))
+    sshPrivateKey(PrivateKey(CoordinatorUser, new File(privateKeyPath), ""))
   }
 
   def createHost(coordinator: NodeMetadata) = {
@@ -92,8 +91,8 @@ object AWSJobService {
   }
 
   def createSGEJobService(starcluster: Starcluster) = {
-    Logger.log(FINE, s"Creating SGE job service on starcluster master - log in: ssh $Root@${starcluster.masterIp} -i ${starcluster.privateKeyPath}.")
-    SGEJobService(starcluster.masterIp)(PrivateKey(Root, new File(starcluster.privateKeyPath), ""))
+    Logger.log(FINE, s"Creating SGE job service on starcluster master - log in: ssh ${Starcluster.MasterUser}@${starcluster.masterIp} -i ${starcluster.privateKeyPath}.")
+    SGEJobService(starcluster.masterIp)(PrivateKey(Starcluster.MasterUser, new File(starcluster.privateKeyPath), ""))
   }
 
   def readAWSCredentials(user: String, path: String): (String, String) = {
@@ -175,7 +174,7 @@ trait AWSJobService extends JobService with SSHHost with SSHStorage with BashShe
 
   def close(): Unit = client.getContext.close()
 
-  def sharedHome = Starcluster.SharedHome
+  override def home = Starcluster.SharedHome
 
   private def createTemplate(region: String, client: ComputeService): Template = {
     val template = client.templateBuilder()

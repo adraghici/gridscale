@@ -30,10 +30,12 @@ import resource.managed
 
 object Starcluster {
   val UniqId = UUID.randomUUID.toString
+  val MasterUser = "root"
+  val MasterHome = "/root"
   val Name = "gridscale-cluster" + UniqId
   val Tool = "starcluster"
   val Template = "jobcluster"
-  val User = "sgeadmin"
+  val SGEUser = "sgeadmin"
   val Shell = "bash"
   val Image = "ami-3393a45a"
   val KeypairName = "starcluster-" + UniqId
@@ -88,7 +90,7 @@ object Starcluster {
       buf += section(s"cluster $Template")
       buf += assign("KEYNAME", KeypairName)
       buf += assign("CLUSTER_SIZE", size.toString)
-      buf += assign("CLUSTER_USER", User)
+      buf += assign("CLUSTER_USER", SGEUser)
       buf += assign("CLUSTER_SHELL", Shell)
       buf += assign("NODE_IMAGE_ID", Image)
       buf += assign("NODE_INSTANCE_TYPE", instanceType)
@@ -108,9 +110,8 @@ object Starcluster {
 import fr.iscpif.gridscale.aws.Starcluster._
 
 class Starcluster(service: AWSJobService, config: Starcluster.Config) extends BashShell {
-  private val userHome = System.getProperty("user.home")
-  lazy val path = s"${userHome}/${hidden("starcluster")}"
-  lazy val privateKeyPath = userHome + s"/${hidden(Gridscale)}/$KeypairName"
+  lazy val path = createPath
+  lazy val privateKeyPath = System.getProperty("user.home") + s"/${hidden(Gridscale)}/$KeypairName"
 
   def configure() = {
     service.makeDir(path)
@@ -173,5 +174,11 @@ class Starcluster(service: AWSJobService, config: Starcluster.Config) extends Ba
 
   private def cmd(instruction: String, option: (String, String), arg: String) = {
     List(Tool, instruction, option._1, option._2, arg).mkString(" ")
+  }
+
+  private def createPath: String = {
+    implicit val credential = service.credential
+    val root = service withSftpClient { _.canonicalize(".") }
+    root + s"/${hidden("starcluster")}"
   }
 }

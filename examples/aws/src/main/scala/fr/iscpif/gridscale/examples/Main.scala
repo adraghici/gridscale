@@ -36,11 +36,12 @@ object Main extends App {
     aws ⇒
       {
         aws.start()
+        println(s"working in ${aws.home}")
         println("job submission...")
         val description = new AWSJobDescription {
           def executable = "/bin/echo"
           def arguments = "hello > test.txt"
-          def workDirectory = aws.sharedHome + "/testjob/"
+          def workDirectory = aws.home + "/testjob/"
         }
 
         val job = aws.submit(description)
