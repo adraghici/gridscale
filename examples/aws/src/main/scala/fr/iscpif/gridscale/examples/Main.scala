@@ -36,7 +36,6 @@ object Main extends App {
     aws ⇒
       {
         aws.start()
-        println(s"working in ${aws.home}")
         println("job submission...")
         val description = new AWSJobDescription {
           def executable = "/bin/echo"
@@ -49,8 +48,6 @@ object Main extends App {
         val state = aws.untilFinished(job) { println }
 
         aws.purge(job)
-
-        aws.kill()
       }
   }
 }

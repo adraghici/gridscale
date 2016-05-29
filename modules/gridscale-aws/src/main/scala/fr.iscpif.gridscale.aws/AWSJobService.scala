@@ -91,7 +91,7 @@ object AWSJobService {
   }
 
   def createSGEJobService(starcluster: Starcluster) = {
-    Logger.log(FINE, s"Creating SGE job service on starcluster master - log in: ssh ${Starcluster.MasterUser}@${starcluster.masterIp} -i ${starcluster.privateKeyPath}.")
+    Logger.log(FINE, s"Creating SGE job service on Starcluster master - log in: ssh ${Starcluster.MasterUser}@${starcluster.masterIp} -i ${starcluster.privateKeyPath}.")
     SGEJobService(starcluster.masterIp)(PrivateKey(Starcluster.MasterUser, new File(starcluster.privateKeyPath), ""))
   }
 
@@ -164,15 +164,15 @@ trait AWSJobService extends JobService with SSHHost with SSHStorage with BashShe
 
   def addNodes(count: Int) = starcluster.addNodes(count)
 
-  def kill() = {
-    Logger.log(FINE, "Shutting down starcluster.")
+  def close() = {
+    Logger.log(FINE, "Shutting down Starcluster.")
     starcluster.terminate()
     Logger.log(FINE, s"Shutting down coordinator ${coordinator.getId}.")
     client.destroyNode(coordinator.getId)
+    Logger.log(FINE, "Closing AWS channel.")
+    client.getContext.close()
     Logger.log(FINE, "AWSJobService cleanup done.")
   }
-
-  def close(): Unit = client.getContext.close()
 
   override def home = Starcluster.SharedHome
 
