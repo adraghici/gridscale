@@ -95,12 +95,6 @@ trait SLURMJobService extends JobService with SSHHost with SSHStorage with BashS
         }
     }
 
-  def processSubmit(resSubmit: (SLURMJobDescription, ExecResult)) = {
-    val (jobDescription, ExecResult(ret, output, error)) = resSubmit
-    val job = processSubmitOutput(jobDescription, ret, output, error)
-    (jobDescription, job)
-  }
-
   def processSubmitOutput(description: D, ret: Int, output: String, error: String, command: Option[String] = None) = {
     val jobId = output.trim.reverse.takeWhile(_ != ' ').reverse
 

@@ -18,10 +18,9 @@
 package fr.iscpif.gridscale.benchmark
 package util
 
-import fr.iscpif.gridscale.condor.{ CondorJobDescription, CondorJobService }
+import fr.iscpif.gridscale.aws.{AWSJobDescription, AWSJobService}
 import fr.iscpif.gridscale.jobservice.JobService
-import fr.iscpif.gridscale.slurm._
-import fr.iscpif.gridscale.pbs._
+import fr.iscpif.gridscale.sge.{SGEJobDescription, SGEJobService}
 
 trait BenchmarkUtils {
 
@@ -57,8 +56,8 @@ trait Benchmark extends BenchmarkUtils {
 
   def benchmarkSSH(jd: JobDescription)(nbJobs: Int) = {
 
-    val sshJobService = jobService.asInstanceOf[PBSJobService]
-    val sshJobDescriptions = jobDescription.asInstanceOf[PBSJobDescription]
+    val sshJobService = jobService.asInstanceOf[SGEJobService]
+    val sshJobDescriptions = jobDescription.asInstanceOf[SGEJobDescription]
     val sshSubmit = sshJobService.submitAsync(_)
     val sshState = sshJobService.stateAsync(_)
     val sshCancel = sshJobService.cancelAsync(_)
@@ -131,7 +130,9 @@ trait Benchmark extends BenchmarkUtils {
     List(submitTime, queryTime, cancelTime)
   }
 
-  def runBenchmark(runs: Int = 1) = for (run ← 1 to runs) yield benchmarkOthers(jobDescription)(nbJobs)
+  def runBenchmark(runs: Int = 1) = for (run ← 1 to runs) yield benchmarkSSH(jobDescription)(nbJobs)
+
+  def runBenchmarkJobs(n: Int) = benchmarkSSH(jobDescription)(n)
 
   def avgBenchmark(runs: Int) = {
     val res = runBenchmark(runs)

@@ -29,28 +29,32 @@ import fr.iscpif.gridscale.tools.shell.BashShell
 import resource.managed
 
 object Starcluster {
-  val UniqId = UUID.randomUUID.toString
   val MasterUser = "root"
   val MasterHome = "/root"
-  val Name = "gridscale-cluster" + UniqId
   val Tool = "starcluster"
   val Template = "jobcluster"
   val SGEUser = "sgeadmin"
   val Shell = "bash"
-  val Image = "ami-3393a45a"
-  val KeypairName = "starcluster-" + UniqId
+  val Images = Map("eu-west-1" -> "ami-044abf73", "us-east-1" -> "ami-3393a45a")
   val OwnerReadWritePermissions = "rw-------"
   val SharedHome = "/home"
 
   def apply(service: AWSJobService, config: Config) = new Starcluster(service, config)
 
   class Config(
+      region: String,
       awsUserId: String,
       awsKeyId: String,
       awsSecretKey: String,
       privateKeyPath: String,
-      instanceType: String,
+      masterInstanceType: String,
+      nodeInstanceType: String,
+      val spotBid: Option[Double] = None,
       val size: Int = 1) {
+
+    val uniqId = UUID.randomUUID.toString
+    val name = "gridscale-cluster-" + uniqId
+    val keypairName = "starcluster-" + uniqId
 
     override def toString = {
       val buf = new ScriptBuffer
@@ -72,6 +76,8 @@ object Starcluster {
     private def awsCredentials = {
       val buf = new ScriptBuffer
       buf += section("aws info")
+      buf += assign("AWS_REGION_NAME", region)
+      buf += assign("AWS_REGION_HOST", s"ec2.$region.amazonaws.com")
       buf += assign("AWS_ACCESS_KEY_ID", awsKeyId)
       buf += assign("AWS_SECRET_ACCESS_KEY", awsSecretKey)
       buf += assign("AWS_USER_ID", awsUserId)
@@ -80,20 +86,21 @@ object Starcluster {
 
     private def privateKey = {
       val buf = new ScriptBuffer
-      buf += section(s"key $KeypairName")
-      buf += assign("KEY_LOCATION", s".starcluster/$KeypairName")
+      buf += section(s"key $keypairName")
+      buf += assign("KEY_LOCATION", s".starcluster/$keypairName")
       buf.toString
     }
 
     private def clusterSpecs = {
       val buf = new ScriptBuffer
       buf += section(s"cluster $Template")
-      buf += assign("KEYNAME", KeypairName)
+      buf += assign("KEYNAME", keypairName)
       buf += assign("CLUSTER_SIZE", size.toString)
       buf += assign("CLUSTER_USER", SGEUser)
       buf += assign("CLUSTER_SHELL", Shell)
-      buf += assign("NODE_IMAGE_ID", Image)
-      buf += assign("NODE_INSTANCE_TYPE", instanceType)
+      buf += assign("NODE_IMAGE_ID", Images(region))
+      buf += assign("MASTER_INSTANCE_TYPE", masterInstanceType)
+      buf += assign("NODE_INSTANCE_TYPE", nodeInstanceType)
       buf.toString
     }
 
@@ -111,7 +118,7 @@ import fr.iscpif.gridscale.aws.Starcluster._
 
 class Starcluster(service: AWSJobService, config: Starcluster.Config) extends BashShell {
   lazy val path = createPath
-  lazy val privateKeyPath = System.getProperty("user.home") + s"/${hidden(Gridscale)}/$KeypairName"
+  lazy val privateKeyPath = System.getProperty("user.home") + s"/${hidden(Gridscale)}/${config.keypairName}"
 
   def configure() = {
     service.makeDir(path)
@@ -120,16 +127,17 @@ class Starcluster(service: AWSJobService, config: Starcluster.Config) extends Ba
   }
 
   def start() = service.withConnection { implicit connection ⇒
-    exec(cmd("start", Name))
+    if (config.spotBid.isDefined) exec(cmd(s"start --force-spot-master -b ${config.spotBid.get}", config.name))
+    else exec(cmd("start", config.name))
     loadbalance(config.size)
   }
 
   def terminate() = service.withConnection { implicit connection ⇒
-    exec("echo y | " + cmd("terminate", "-f", Name))
+    exec("echo y | " + cmd("terminate", "-f", config.name))
   }
 
   def addNodes(count: Int) = service.withConnection { implicit connection ⇒
-    exec(cmd("addnode", ("-n", count.toString), Name))
+    exec(cmd("addnode", ("-n", count.toString), config.name))
   }
 
   def masterIp = service.withConnection { implicit connection ⇒
@@ -140,7 +148,7 @@ class Starcluster(service: AWSJobService, config: Starcluster.Config) extends Ba
   }
 
   private def loadbalance(maxNodes: Int) = service.withConnection { implicit connection ⇒
-    exec("nohup " + cmd("loadbalance", ("-m", maxNodes.toString), Name) + s" > ${path}/loadbalancer.log 2>&1 &")
+    exec("nohup " + cmd("loadbalance", ("-m", maxNodes.toString), config.name) + s" > $path/loadbalancer.log 2>&1 &")
   }
 
   private def writeConfig() = service.withConnection { implicit connection ⇒
@@ -148,9 +156,9 @@ class Starcluster(service: AWSJobService, config: Starcluster.Config) extends Ba
   }
 
   private def createKeypair() = service.withConnection { implicit connection ⇒
-    exec(cmd("createkey", ("-o", s"$path/$KeypairName"), KeypairName))
+    exec(cmd("createkey", ("-o", s"$path/${config.keypairName}"), config.keypairName))
     // Hack because reading doesn't work
-    val (_, privateKey, _) = execReturnCodeOutput(s"cat $path/$KeypairName")
+    val (_, privateKey, _) = execReturnCodeOutput(s"cat $path/${config.keypairName}")
     val out = Paths.get(s"$privateKeyPath")
     Files.createDirectories(out.getParent)
     Files.createFile(out)

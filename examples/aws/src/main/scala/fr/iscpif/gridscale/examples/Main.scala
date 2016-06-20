@@ -24,7 +24,7 @@ import resource.managed
 object Main extends App {
 
   val awsService = AWSJobService(new AWSJobService.Config(
-    region = "us-east-1",
+    region = "eu-west-1",
     awsUserName = "adrian",
     awsUserId = "788108661243",
     awsKeypairName = "gridscale",
@@ -38,8 +38,8 @@ object Main extends App {
         aws.start()
         println("job submission...")
         val description = new AWSJobDescription {
-          def executable = "/bin/echo"
-          def arguments = "hello > test.txt"
+          def executable = "/bin/sleep"
+          def arguments = "5"
           def workDirectory = aws.home + "/testjob/"
         }
 

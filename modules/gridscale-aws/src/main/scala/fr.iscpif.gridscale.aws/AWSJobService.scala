@@ -18,8 +18,7 @@
 package fr.iscpif.gridscale.aws
 
 import java.io.File
-import java.util.logging.Level._
-import java.util.logging.{ Logger ⇒ JLogger }
+import java.util.logging.{Logger ⇒ JLogger}
 
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
@@ -29,14 +28,15 @@ import scala.io.Source
 import fr.iscpif.gridscale.authentication.PrivateKey
 import fr.iscpif.gridscale.aws.AWSJobService._
 import fr.iscpif.gridscale.jobservice._
-import fr.iscpif.gridscale.sge.{ SGEJobDescription, SGEJobService }
+import fr.iscpif.gridscale.sge.{SGEJobDescription, SGEJobService}
+import fr.iscpif.gridscale.sge.SGEJobService.SGEJob
 import fr.iscpif.gridscale.ssh._
 import fr.iscpif.gridscale.tools.shell.BashShell
 import org.jclouds.ContextBuilder
 import org.jclouds.aws.ec2.AWSEC2ProviderMetadata
 import org.jclouds.aws.ec2.compute.AWSEC2TemplateOptions
-import org.jclouds.compute.{ ComputeService, ComputeServiceContext }
-import org.jclouds.compute.domain.{ NodeMetadata, OsFamily, Template }
+import org.jclouds.compute.{ComputeService, ComputeServiceContext}
+import org.jclouds.compute.domain.{NodeMetadata, OsFamily, Template}
 import org.jclouds.ec2.domain.InstanceType
 import org.jclouds.sshj.config.SshjSshClientModule
 
@@ -44,21 +44,25 @@ object AWSJobService {
 
   val Gridscale = "gridscale"
   val Provider = new AWSEC2ProviderMetadata()
-  val CoordinatorImageId = "ami-b7d8cedd"
+  val CoordinatorImageIds = Map("eu-west-1" -> "ami-b7f360c4", "us-east-1" -> "ami-b7d8cedd")
   val Group = "gridscale-aws"
   val CoordinatorUser = "ubuntu"
-  val DefaultInstanceType = "m1.small"
+  val MasterInstanceType = "m3.medium"
+  val NodeInstanceType = "m1.small"
   val ClusterName = "gridscale-cluster"
   val Logger = JLogger.getLogger(classOf[AWSJobService].getName)
 
   def apply(config: Config) = {
     val (keyId, secretKey) = readAWSCredentials(config.awsUserName, config.awsCredentialsPath)
     val starclusterConfig = new Starcluster.Config(
+      region = config.region,
       awsKeyId = keyId,
       awsSecretKey = secretKey,
       awsUserId = config.awsUserId,
       privateKeyPath = config.privateKeyPath,
-      instanceType = DefaultInstanceType,
+      masterInstanceType = config.masterInstanceType,
+      nodeInstanceType = config.nodeInstanceType,
+      spotBid = config.spotBid,
       size = config.clusterSize)
 
     new AWSJobService {
@@ -91,7 +95,7 @@ object AWSJobService {
   }
 
   def createSGEJobService(starcluster: Starcluster) = {
-    Logger.log(FINE, s"Creating SGE job service on Starcluster master - log in: ssh ${Starcluster.MasterUser}@${starcluster.masterIp} -i ${starcluster.privateKeyPath}.")
+    println(s"Creating SGE job service on Starcluster master - log in: ssh ${Starcluster.MasterUser}@${starcluster.masterIp} -i ${starcluster.privateKeyPath}.")
     SGEJobService(starcluster.masterIp)(PrivateKey(Starcluster.MasterUser, new File(starcluster.privateKeyPath), ""))
   }
 
@@ -116,6 +120,9 @@ object AWSJobService {
       val awsKeypairName: String,
       val awsCredentialsPath: String,
       val privateKeyPath: String,
+      val masterInstanceType: String = AWSJobService.MasterInstanceType,
+      val nodeInstanceType: String = AWSJobService.NodeInstanceType,
+      val spotBid: Option[Double] = None,
       val clusterSize: Int) {
   }
 }
@@ -133,45 +140,61 @@ trait AWSJobService extends JobService with SSHHost with SSHStorage with BashShe
 
   def submit(description: D): J = sge.submit(description)
 
+  def submitAsync(description: D) = sge.submitAsync(description)
+
+  def processSubmit(resSubmit: (D, ExecResult)) = sge.processSubmit(resSubmit)
+
+  def processSubmitOutput(description: D, ret: Int, output: String, error: String) = sge.processSubmitOutput(description, ret, output, error)
+
   def cancel(job: J) = sge.cancel(job)
 
+  def cancelAsync(job: J) = sge.cancelAsync(job)
+
+  def processCancel(resCancel: (SGEJob, ExecResult)) = sge.processCancel(resCancel)
+
   def state(job: J): JobState = sge.state(job)
+
+  def stateAsync(job: J) = sge.stateAsync(job)
+
+  def processState(resState: (SGEJob, ExecResult)) = sge.processState(resState)
+
+  def processStateOuput(ret: Int, output: String, error: String, command: Option[String] = None) = sge.processStateOuput(ret, output, error, command)
 
   def purge(job: J) = sge.purge(job)
 
   def start() = {
-    Logger.log(FINE, "Starting coordinator.")
+    println("Starting coordinator.")
     coordinator = client.createNodesInGroup(Group, 1, createTemplate(region, client)).head
     // Wait for a short period to make sure that the VM is initialized and ports are opened
-    Logger.log(FINE, "Waiting for coordinator initialization.")
+    println("Waiting for coordinator initialization.")
     SECONDS.sleep(60)
-    Logger.log(FINE, "Configuring Starcluster.")
+    println("Configuring Starcluster.")
     starcluster.configure()
-    Logger.log(FINE, "Starting Starcluster.")
+    println("Starting Starcluster.")
     starcluster.start()
-    Logger.log(FINE, s"Starcluster master ip: ${starcluster.masterIp}")
-    Logger.log(FINE, s"Starcluster private key path: ${starcluster.privateKeyPath}")
-    Logger.log(FINE, "Setting Starcluster master SGE environment variables.")
-    sge.setEnv(List(
+    println(s"Starcluster master ip: ${starcluster.masterIp}")
+    println(s"Starcluster private key path: ${starcluster.privateKeyPath}")
+    println("Setting Starcluster master SGE environment variables.")
+    sge.configureMaster(List(
       ("SGE_ROOT", "/opt/sge6"),
       ("PATH", "$PATH:/opt/sge6/bin/linux-x64"),
       ("SGE_QMASTER_PORT", "63231"),
       ("SGE_CLUSTER_NAME", "starcluster"),
       ("SGE_CELL", "default"),
       ("SGE_EXECD_PORT", "63232")))
-    Logger.log(FINE, "AWSJobService ready.")
+    println("AWSJobService ready.")
   }
 
   def addNodes(count: Int) = starcluster.addNodes(count)
 
   def close() = {
-    Logger.log(FINE, "Shutting down Starcluster.")
+    println("Shutting down Starcluster.")
     starcluster.terminate()
-    Logger.log(FINE, s"Shutting down coordinator ${coordinator.getId}.")
+    println(s"Shutting down coordinator ${coordinator.getId}.")
     client.destroyNode(coordinator.getId)
-    Logger.log(FINE, "Closing AWS channel.")
+    println("Closing AWS channel.")
     client.getContext.close()
-    Logger.log(FINE, "AWSJobService cleanup done.")
+    println("AWSJobService cleanup done.")
   }
 
   override def home = Starcluster.SharedHome
@@ -180,10 +203,10 @@ trait AWSJobService extends JobService with SSHHost with SSHStorage with BashShe
     val template = client.templateBuilder()
       .hardwareId(InstanceType.T1_MICRO)
       .osFamily(OsFamily.UBUNTU)
-      .imageId(createImageId(region, CoordinatorImageId))
+      .imageId(createImageId(region, CoordinatorImageIds(region)))
       .build()
 
-    val options = template.getOptions.as(classOf[AWSEC2TemplateOptions]).keyPair(awsKeypairName)
+    val options = template.getOptions.as(classOf[AWSEC2TemplateOptions]).keyPair(awsKeypairName).spotPrice(0.05f)
     template
   }
 }

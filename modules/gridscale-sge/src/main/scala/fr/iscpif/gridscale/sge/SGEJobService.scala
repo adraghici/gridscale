@@ -21,12 +21,14 @@ package fr.iscpif.gridscale.sge
 import java.io.ByteArrayInputStream
 
 import fr.iscpif.gridscale.jobservice._
+import fr.iscpif.gridscale.ssh.SSHHost._
 import fr.iscpif.gridscale.ssh.SSHJobService._
 import fr.iscpif.gridscale.ssh._
 import fr.iscpif.gridscale.tools.shell.BashShell
 
 import scala.concurrent.duration._
 import scala.util.Try
+import scalaz.concurrent.Future
 
 object SGEJobService {
 
@@ -73,8 +75,11 @@ trait SGEJobService extends JobService with SSHHost with SSHStorage with BashShe
   type J = SGEJob
   type D = SGEJobDescription
 
-  def setEnv(vars: List[(String, String)]) = withConnection { implicit connection ⇒
+  def configureMaster(vars: List[(String, String)]) = withConnection { implicit connection ⇒
     vars.foreach(t ⇒ exec(s"echo 'export ${t._1}=${t._2}' >> .bashrc"))
+    exec("echo MaxSessions 500 >> /etc/ssh/sshd_config")
+    exec("echo MaxStartups 500 >> /etc/ssh/sshd_config")
+    exec("service ssh restart")
   }
 
   def submit(description: D): J = withConnection { implicit connection ⇒
@@ -91,6 +96,37 @@ trait SGEJobService extends JobService with SSHHost with SSHStorage with BashShe
     SGEJob(description, jobId)
   }
 
+  def submitAsync(description: D) =
+    SSHHost.withSSH {
+      case (sshClient, sftpClient) ⇒
+        Future {
+          implicit val sftp = sftpClient
+          implicit val connection = sshClient
+
+          exec("mkdir -p " + description.workDirectory)
+          write2(new ByteArrayInputStream(description.toSGE.getBytes), sgeScriptPath(description))
+
+          val command = "cd " + description.workDirectory + " && qsub " + sgeScriptName(description)
+          val (ret, out, err) = execReturnCodeOutput(command)
+
+          (description, ExecResult(ret, out, err))
+        }
+    }
+
+  def processSubmit(resSubmit: (SGEJobDescription, ExecResult)) = {
+    val (jobDescription, ExecResult(ret, output, error)) = resSubmit
+    val job = processSubmitOutput(jobDescription, ret, output, error)
+    (jobDescription, job)
+  }
+
+  def processSubmitOutput(description: D, ret: Int, output: String, error: String, command: Option[String] = None) = {
+    val jobId = output.split(" ")(2)
+
+    if (ret != 0) throw exception(ret, command.getOrElse("(job submission)"), jobId, error)
+    if (jobId == null) throw new RuntimeException("qsub did not return a JobID")
+    new SGEJob(description, jobId)
+  }
+
   def state(job: J): JobState = withConnection { implicit connection ⇒
     val command = s"""qstat | sed 's/^  *//g'  |  grep '^${job.sgeId} ' | sed 's/  */ /g' | cut -d' ' -f5"""
 
@@ -104,7 +140,41 @@ trait SGEJobService extends JobService with SSHHost with SSHStorage with BashShe
     }
   }
 
+  def stateAsync(job: J) = withReusedConnection { implicit connection ⇒
+    val command = s"""qstat | sed 's/^  *//g'  |  grep '^${job.sgeId} ' | sed 's/  */ /g' | cut -d' ' -f5"""
+    execReturnCodeOutputFuture(command).map((job, _))
+  }
+
+  def processState(resState: (SGEJob, ExecResult)) = {
+    val (job, ExecResult(ret, output, error)) = resState
+    val state = processStateOuput(ret, output, error)
+    (job, state)
+  }
+
+  def processStateOuput(ret: Int, output: String, error: String, command: Option[String] = None) = {
+    ret.toInt match {
+      case 0 ⇒
+        val status = output.dropRight(1)
+        translateStatus(status)
+      case r ⇒ throw exception(ret, command.getOrElse("(job state query)"), output, error)
+    }
+  }
+
   def cancel(job: J) = withConnection { exec("qdel " + job.sgeId)(_) }
+
+  def cancelAsync(job: J) =
+    withReusedConnection { implicit connection ⇒
+      execReturnCodeOutputFuture("qdel " + job.sgeId).map((job, _))
+    }
+
+  // FIXME quite similar to the others too..
+  def processCancel(resCancel: (SGEJob, ExecResult)) = {
+    val (job, result) = resCancel
+    result match {
+      case ExecResult(_, _, _) ⇒ (job, result)
+      case _                   ⇒ throw new RuntimeException(s"SGE JobService could not cancel job ${job.sgeId}")
+    }
+  }
 
   //Purge output error job script
   // TODO purge log as well
